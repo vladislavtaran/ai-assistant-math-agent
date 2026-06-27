@@ -1,0 +1,20 @@
+[Unit]
+Description=chrome.net.ua chatbot proxy (Gemini)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/chatbot.env
+ExecStart=/usr/bin/python3 /opt/chatbot/chatbot.py
+Restart=on-failure
+RestartSec=3
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

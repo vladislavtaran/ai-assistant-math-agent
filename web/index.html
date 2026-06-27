@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assistant — Vladyslav Taran</title>
+  <meta name="description" content="AI assistant on chrome.net.ua." />
+  <meta name="theme-color" content="#ece8df" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>try{var t=localStorage.getItem('vt-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+  <link rel="stylesheet" href="chat.css?v=20260627" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23ece8df'/><text x='8' y='74' font-size='58' font-family='monospace' font-weight='700' fill='%23151412'>ai</text><rect x='66' y='58' width='22' height='16' fill='%23c1440e'/></svg>" />
+</head>
+<body>
+  <header class="chat-top">
+    <a class="back" href="/">&larr; vladyslav.taran</a>
+    <button class="theme-btn" data-theme-toggle aria-label="Switch color theme"><span class="tdot"></span><span class="tlabel">Dark</span></button>
+  </header>
+
+  <main class="chat-app">
+    <div class="chat-intro">
+      <p class="kicker"><span class="sig">//</span> Utility</p>
+      <h1>Assistant</h1>
+      <p class="sub">Ask me anything — type a question below to get started.</p>
+    </div>
+
+    <div class="chat-window" id="window">
+      <div class="msg bot" data-agent="general">
+        <div class="avatar">●</div>
+        <div class="bubble">
+          <div class="who">Assistant</div>
+          <div class="body">Hi! Ask me anything to get started.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice" id="notice" hidden></div>
+
+    <form class="composer" id="composer">
+      <textarea id="input" rows="1" placeholder="Message the assistant…  (Enter to send, Shift+Enter for newline)" maxlength="4000"></textarea>
+      <button type="submit" id="send" class="send" aria-label="Send">Send</button>
+    </form>
+    <p class="foot">Routing &amp; replies run server-side on chrome.net.ua &middot; <a href="/">Back to portfolio</a></p>
+  </main>
+
+  <script src="chat.js?v=20260627"></script>
+</body>
+</html>
