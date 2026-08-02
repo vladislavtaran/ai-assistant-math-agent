@@ -48,8 +48,15 @@ The loop bounds how many model calls a message can cost (important on a free
 tier):
 
 - general / conversational → **1 call** (answers directly, no tool)
-- single-tool question → **2 calls** (call the tool, then narrate its result)
+- single deterministic tool (math / time / network) → **1 call** (the model marks
+  the call `final` and the tool's exact output is returned as-is)
+- portfolio / grounded answer → **2 calls** (retrieve, then narrate with citations)
 - composite question → up to `MAX_STEPS + 1` calls
+
+**Model fallback chain** further stretches the free tier: set `GEMINI_MODELS` to a
+comma-separated list and each model's *separate* daily bucket is tried in turn, so
+one model's 429 transparently falls through to the next (keep any model another
+app uses off the list so the chat never spends its quota).
 
 On HTTP 429 (free limit reached) it returns a friendly message and never a
 charge; a per-IP soft rate limit protects the quota.

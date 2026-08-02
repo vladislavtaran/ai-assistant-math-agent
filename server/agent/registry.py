@@ -15,12 +15,16 @@ results are trustworthy and reproducible.
 
 
 class Tool:
-    def __init__(self, name, description, args, run, examples=None):
+    def __init__(self, name, description, args, run, examples=None, terminal=False):
         self.name = name
         self.description = description
         self.args = args or {}
         self._run = run
         self.examples = examples or []
+        # terminal: the tool's `summary` is a complete, user-ready answer, so when
+        # the model marks its call "final" we can return it directly and skip the
+        # extra narration LLM call (saves free-tier quota).
+        self.terminal = terminal
 
     def run(self, args):
         try:

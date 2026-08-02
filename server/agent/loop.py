@@ -18,7 +18,7 @@ import json
 from .registry import Registry
 from .tools import math_tool, datetime_tool, network_tool, portfolio_tool
 
-MAX_STEPS = 3          # tool-taking iterations before we force a final answer
+MAX_STEPS = 4          # planning iterations (incl. empty-response retries) before we stop
 MAX_ARGS_CHARS = 2000
 
 SYSTEM = """You are the reasoning core of the assistant on Vladyslav Taran's \
@@ -34,6 +34,11 @@ Keep "thought" to a short phrase (a dozen words at most):
   to use a tool:  {"thought": "<short>", "tool": "<tool name>", "args": { ... }}
   to answer:      {"thought": "<short>", "answer": "<final answer, Markdown ok>"}
 
+For a direct math / date-time / network question where the tool's own output IS
+the complete answer, add "final": true to the tool call — the exact result is
+then shown to the user as-is (do NOT set "final" for portfolio_search, and do not
+set it when you still need to combine several tools).
+
 Rules:
 - For ANY arithmetic or mathematics, you MUST call math_solver — never compute it yourself.
 - For anything about Vladyslav, his background, skills, or his projects, call \
@@ -44,6 +49,39 @@ results VERBATIM — do not alter them.
 - If a plain conversational or general-knowledge question needs no tool, answer \
 it directly and immediately.
 - Be concise, friendly, and professional. Prefer one short answer over many tool calls."""
+
+
+COMPOSE_SYS = """You are the assistant on Vladyslav Taran's personal website. \
+Using ONLY the notes below, answer the user's question in a friendly, concise \
+way, and mention the relevant source name(s) in brackets, e.g. [Experience]. If \
+the notes don't contain the answer, say you don't have that information. Write \
+the answer directly — do not call any tools."""
+
+
+def _last_user(contents):
+    for t in reversed(contents):
+        if t.get("role") == "user" and t.get("parts"):
+            return t["parts"][0].get("text", "")
+    return ""
+
+
+def _compose(question, notes, gen_text):
+    """One clean generation that turns retrieved notes into a grounded answer.
+
+    Deliberately a plain Q&A prompt (no tool framing) so it is reliable across
+    models — gemini-3.x otherwise tends to emit a native functionCall or empty
+    text when it sees the tool-decision protocol on a follow-up turn.
+    """
+    contents = [{"role": "user", "parts": [{"text":
+        "Question: %s\n\nNotes:\n%s" % (question, notes)}]}]
+    txt = (gen_text(COMPOSE_SYS, contents) or "").strip()
+    if txt.startswith("{"):  # a stray decision slipped through -> salvage its answer
+        d = _parse_decision(txt)
+        if isinstance(d, dict) and d.get("answer"):
+            txt = str(d["answer"]).strip()
+        elif isinstance(d, dict) and "tool" in d:
+            txt = ""
+    return txt
 
 
 def build_registry():
@@ -115,34 +153,47 @@ def run_agent(contents, gen_text, registry=None, max_steps=MAX_STEPS):
     registry = registry or build_registry()
     system = SYSTEM % registry.spec()
     convo = list(contents)
+    question = _last_user(contents)
     trace = []
     citations = []
     tools_used = []
     calls = 0
+
+    def _finish(reply):
+        return {"reply": str(reply).strip(), "agent": _agent_label(tools_used),
+                "trace": trace, "citations": citations, "calls": calls}
 
     for step in range(max_steps):
         raw = gen_text(system, convo)
         calls += 1
         decision = _parse_decision(raw)
 
-        # unparseable, or a plain-text reply -> treat as the final answer
+        # unparseable, or a plain-text reply -> treat as the final answer.
         if not decision or ("tool" not in decision and "answer" not in decision):
-            reply = (raw or "").strip() or "Sorry, I didn't catch that — could you rephrase?"
-            return {"reply": reply, "agent": _agent_label(tools_used),
-                    "trace": trace, "citations": citations, "calls": calls}
+            reply = (raw or "").strip()
+            if reply:
+                return _finish(reply)  # a plain-text answer
+            # empty response (some thinking models emit only reasoning on a turn):
+            if tools_used:
+                notes = "\n\n".join(t["observation"] for t in trace if t.get("type") == "tool")
+                reply = _compose(question, notes, gen_text)
+                calls += 1
+                return _finish(reply or "Sorry, I couldn't complete that — please try rephrasing.")
+            if step < max_steps - 1:
+                continue  # nothing decided yet -> retry the planning step
+            return _finish("Sorry, I didn't catch that — could you rephrase?")
 
         if "answer" in decision and "tool" not in decision:
             if decision.get("thought"):
                 trace.append({"type": "thought", "text": str(decision["thought"])[:400]})
-            return {"reply": str(decision.get("answer", "")).strip(),
-                    "agent": _agent_label(tools_used), "trace": trace,
-                    "citations": citations, "calls": calls}
+            return _finish(decision.get("answer", ""))
 
         # --- a tool call ---
         name = decision.get("tool")
         args = decision.get("args") or {}
         if not isinstance(args, dict):
             args = {}
+        tool = registry.get(name)
         result = registry.run(name, args)
         tools_used.append(name)
         for c in result.get("citations", []) or []:
@@ -158,23 +209,31 @@ def run_agent(contents, gen_text, registry=None, max_steps=MAX_STEPS):
             "observation": str(result.get("summary", ""))[:1200],
         })
 
-        # feed the decision + observation back for the next turn
+        # call-saver: if the model marked a terminal tool "final" and it
+        # succeeded, its deterministic summary IS the answer — return it now and
+        # skip the extra narration call (halves quota cost for math/time/network).
+        if (decision.get("final") and tool is not None and tool.terminal
+                and result.get("ok", True)):
+            return _finish(result.get("summary", ""))
+
+        # a non-terminal tool (portfolio RAG) returns notes, not a finished
+        # answer — synthesize a grounded reply now with a clean compose prompt and
+        # return. This is reliable across models and keeps RAG at exactly 2 calls.
+        if tool is not None and not tool.terminal:
+            reply = _compose(question, result.get("summary", ""), gen_text)
+            calls += 1
+            return _finish(reply or result.get("summary", ""))
+
+        # otherwise (a terminal tool without "final") feed the observation back and
+        # let the model continue — it may chain another tool or answer directly.
         convo.append({"role": "model", "parts": [{"text": json.dumps(
             {"tool": name, "args": args})[:MAX_ARGS_CHARS]}]})
         convo.append({"role": "user", "parts": [{"text":
             "Observation from %s:\n%s\n\nUsing this, either call another tool or "
             "give the final answer now." % (name, result.get("summary", ""))}]})
 
-    # step budget spent -> force a final answer from the observations gathered
-    convo.append({"role": "user", "parts": [{"text":
-        "Provide the final answer to the user now, based on the observations above."}]})
-    reply = (gen_text(system, convo) or "").strip()
+    # step budget spent -> synthesize a final answer from the observations gathered
+    notes = "\n\n".join(t["observation"] for t in trace if t.get("type") == "tool")
+    reply = _compose(question, notes, gen_text) if notes else ""
     calls += 1
-    reply = _parse_decision(reply)
-    reply = reply.get("answer") if isinstance(reply, dict) and reply.get("answer") else None
-    if not reply:
-        # last resort: hand back the most recent tool observation
-        reply = next((t["observation"] for t in reversed(trace) if t.get("type") == "tool"),
-                     "Sorry, I couldn't complete that — please try rephrasing.")
-    return {"reply": str(reply).strip(), "agent": _agent_label(tools_used),
-            "trace": trace, "citations": citations, "calls": calls}
+    return _finish(reply or "Sorry, I couldn't complete that — please try rephrasing.")

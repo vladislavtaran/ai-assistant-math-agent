@@ -77,4 +77,5 @@ TOOL = Tool(
         '{"tool":"network","args":{"operation":"dns","value":"chrome.net.ua"}}',
     ],
     run=_run,
+    terminal=True,
 )

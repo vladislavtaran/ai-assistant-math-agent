@@ -90,4 +90,5 @@ TOOL = Tool(
         '{"tool":"math_solver","args":{"operation":"integrate","expression":"x*sin(x)","variable":"x"}}',
     ],
     run=_run,
+    terminal=True,
 )

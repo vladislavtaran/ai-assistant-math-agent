@@ -39,8 +39,12 @@ _REGISTRY = build_registry()
 
 
 def _gen_text(system_text, contents):
-    # low temperature -> reliable JSON decisions and concise final answers
-    return llm.gen_text(system_text, contents, temperature=0.2, max_tokens=1536)
+    # Low temperature -> reliable JSON decisions and concise final answers.
+    # High token CAP (not a target): fallback models like gemini-3.x "think" by
+    # default and can't have it disabled, so the budget must be large enough to
+    # hold the reasoning AND the visible JSON/answer — otherwise the answer part
+    # comes back empty. Concision is enforced by the prompt, not this cap.
+    return llm.gen_text(system_text, contents, temperature=0.2, max_tokens=8192)
 
 
 # ---- per-IP rate limit ----------------------------------------------------

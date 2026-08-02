@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from agent.tools import math_tool, datetime_tool, network_tool  # noqa: E402
 from agent.loop import run_agent, build_registry  # noqa: E402
+from agent import llm  # noqa: E402
 
 _fail = 0
 
@@ -47,6 +48,16 @@ check("network cidr", "192.168.1.63" in r["summary"] and "62 usable" in r["summa
 r = network_tool._run({"operation": "dns", "value": "localhost"})
 check("network dns", r.get("ok", True), r["summary"])
 
+# --- llm.parts_decision: native functionCall (gemini-3.x) -> decision JSON ---
+import json as _json  # noqa: E402
+dec = llm.parts_decision([{"functionCall": {"name": "portfolio_search", "args": {"query": "chromeos"}}}])
+dec = _json.loads(dec)
+check("parts_decision functionCall", dec.get("tool") == "portfolio_search" and dec["args"]["query"] == "chromeos", str(dec))
+# plain text still passes through
+check("parts_decision text", llm.parts_decision([{"text": '{"answer":"hi"}'}]) == '{"answer":"hi"}')
+# thought-only parts -> empty (so the loop can fall back)
+check("parts_decision thought-only", llm.parts_decision([{"text": "reasoning", "thought": True}]) == "")
+
 
 # --- agent loop with a scripted fake LLM ---------------------------------
 class FakeLLM:
@@ -76,6 +87,21 @@ out = run_agent([{"role": "user", "parts": [{"text": "what is 12*34+5"}]}], fake
 check("loop math 2-call", "413" in out["reply"] and out["calls"] == 2 and out["agent"] == "math",
       "reply=%r calls=%d" % (out["reply"], out["calls"]))
 check("loop math trace", any(t.get("tool") == "math_solver" for t in out["trace"]))
+
+# 2b) math with final:true -> short-circuits to 1 call (quota saver)
+fake = FakeLLM(['{"tool":"math_solver","args":{"operation":"evaluate","expression":"12*34+5"},"final":true}'])
+out = run_agent([{"role": "user", "parts": [{"text": "what is 12*34+5"}]}], fake, registry=reg)
+check("loop math final 1-call", "413" in out["reply"] and out["calls"] == 1 and out["agent"] == "math",
+      "reply=%r calls=%d" % (out["reply"], out["calls"]))
+
+# 2c) portfolio must NOT short-circuit even if final is (wrongly) set: not terminal
+fake = FakeLLM([
+    '{"tool":"portfolio_search","args":{"query":"chromeos"},"final":true}',
+    '{"answer":"Vladyslav works on ChromeOS."}',
+])
+out = run_agent([{"role": "user", "parts": [{"text": "chromeos?"}]}], fake, registry=reg)
+check("loop portfolio no-shortcircuit", out["calls"] == 2 and "ChromeOS" in out["reply"],
+      "calls=%d" % out["calls"])
 
 # 3) composite: math then datetime then answer
 fake = FakeLLM([

@@ -63,4 +63,5 @@ TOOL = Tool(
     args={"timezone": "IANA zone or city, e.g. Europe/Kyiv, Asia/Tokyo, UTC (default UTC)"},
     examples=['{"tool":"datetime","args":{"timezone":"Asia/Tokyo"}}'],
     run=_run,
+    terminal=True,
 )
