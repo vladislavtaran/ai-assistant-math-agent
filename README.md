@@ -54,6 +54,14 @@ tier):
 On HTTP 429 (free limit reached) it returns a friendly message and never a
 charge; a per-IP soft rate limit protects the quota.
 
+> **Heads-up on the free tier.** Google's free tier for `gemini-2.5-flash-lite`
+> currently allows only **~20 model requests per day** per project
+> (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`). Because each user
+> message costs 1–4 of those, the public demo is good for roughly a handful of
+> questions per day before it shows the "limit reached" notice (resets at
+> midnight US Pacific). For heavier use, raise `GEMINI_MODEL` to a
+> higher-quota/paid model or enable billing.
+
 ## Features
 
 - **Agentic** plan → act → observe loop with a pluggable **tool registry**

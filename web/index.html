@@ -24,6 +24,20 @@
       <p class="kicker"><span class="sig">//</span> Utility</p>
       <h1>Assistant</h1>
       <p class="sub">A small <b>tool-using agent</b>: exact math, questions about Vladyslav's work (with sources), the time anywhere, and network math — it shows its reasoning.</p>
+      <details class="chat-about">
+        <summary>How it works &amp; limits</summary>
+        <div class="about-body">
+          <p>This isn't a plain chatbot. A language model runs a <strong>plan&nbsp;&rarr;&nbsp;act&nbsp;&rarr;&nbsp;observe</strong> loop: for each message it decides, one step at a time, whether to call a deterministic <strong>tool</strong> or answer directly. The facts come from the tools, not the model — so the numbers, dates and sources are trustworthy. Expand the <em>&#9881; Reasoning</em> panel under any answer to see exactly which tools ran.</p>
+          <ul class="about-tools">
+            <li><strong>Math</strong> — a separate <a href="https://www.sympy.org" target="_blank" rel="noopener">SymPy</a> process solves, differentiates, integrates &amp; more. Results are computed, never guessed.</li>
+            <li><strong>Portfolio search</strong> — retrieval-augmented answers about Vladyslav's background &amp; projects, <em>with citations</em>.</li>
+            <li><strong>Date / time</strong> — the real current time in any timezone.</li>
+            <li><strong>Network</strong> — subnet (CIDR) math and DNS lookups.</li>
+          </ul>
+          <p class="about-limit"><strong>Free-tier limit.</strong> It runs on Google's <strong>free</strong> AI API — about <strong>20 model requests per day, shared by everyone</strong>. Each message can use several requests, so expect roughly a <strong>handful of questions per day</strong> site-wide. When the limit is reached the assistant shows a &ldquo;free usage limit reached&rdquo; notice and resumes the next day (resets at midnight US&nbsp;Pacific). No paid billing is attached, so the cap simply pauses the AI — it never incurs a charge.</p>
+          <p class="about-src">Open source: <a href="https://github.com/vladislavtaran/ai-assistant-math-agent" target="_blank" rel="noopener">github.com/vladislavtaran/ai-assistant-math-agent</a></p>
+        </div>
+      </details>
     </div>
 
     <div class="chat-window" id="window">
