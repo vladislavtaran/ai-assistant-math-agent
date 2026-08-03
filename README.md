@@ -103,6 +103,7 @@ server/
   selftest.py        offline tests (tools + loop with a fake LLM)
   chatbot.service    systemd unit
   requirements.txt   math agent deps (sympy)
+mcp-server/          MCP server exposing the deterministic tools (see its README)
 nginx.conf.example   reverse-proxy snippet
 ```
 
@@ -175,6 +176,13 @@ PYTHONHASHSEED=0 python3 rag/selftest_rag.py
 ```
 
 (or HTTP 429 `{ "error": "rate_limit", "message": "…" }` when the free limit is hit).
+
+## MCP server
+
+The project's deterministic tools (math, date/time, subnet/DNS) are also exposed
+as a **Model Context Protocol** server, so any MCP client — Claude Desktop,
+Claude Code, Cursor — can call them. It needs no LLM, API key, or quota, so it's
+free to run locally. See [`mcp-server/`](mcp-server/) for setup and client config.
 
 ## License
 

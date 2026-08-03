@@ -1,0 +1,26 @@
+[Unit]
+Description=chrome.net.ua MCP server (deterministic tools)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=MCP_HTTP=1
+Environment=MCP_HOST=127.0.0.1
+Environment=MCP_PORT=8095
+# served behind nginx at https://chrome.net.ua/mcp — allow that Host (plus localhost)
+Environment=MCP_ALLOWED_HOSTS=chrome.net.ua,127.0.0.1:8095,localhost:8095
+Environment=MCP_ALLOWED_ORIGINS=https://chrome.net.ua
+ExecStart=/opt/mcp-server/.venv/bin/python /opt/mcp-server/server.py
+WorkingDirectory=/opt/mcp-server
+Restart=on-failure
+RestartSec=3
+User=www-data
+Group=www-data
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
