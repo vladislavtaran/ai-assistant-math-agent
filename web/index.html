@@ -34,6 +34,7 @@
             <li><strong>Date / time</strong> — the real current time in any timezone.</li>
             <li><strong>Network</strong> — subnet (CIDR) math and DNS lookups.</li>
           </ul>
+          <p><strong>MCP.</strong> The deterministic tools above (math, date/time, network) are also exposed as a <strong>Model Context Protocol</strong> server, so you can call them from Claude Desktop, Claude Code, or any MCP client. They use no LLM or API key, so that part is free and unlimited &mdash; see the <a href="https://github.com/vladislavtaran/ai-assistant-math-agent/tree/main/mcp-server" target="_blank" rel="noopener">mcp-server</a> in the repo for setup.</p>
           <p class="about-limit"><strong>Free-tier limit.</strong> It runs on Google's <strong>free</strong> AI API — about <strong>20 model requests per day, shared by everyone</strong>. Each message can use several requests, so expect roughly a <strong>handful of questions per day</strong> site-wide. When the limit is reached the assistant shows a &ldquo;free usage limit reached&rdquo; notice and resumes the next day (resets at midnight US&nbsp;Pacific). No paid billing is attached, so the cap simply pauses the AI — it never incurs a charge.</p>
           <p class="about-src">Open source: <a href="https://github.com/vladislavtaran/ai-assistant-math-agent" target="_blank" rel="noopener">github.com/vladislavtaran/ai-assistant-math-agent</a></p>
         </div>
