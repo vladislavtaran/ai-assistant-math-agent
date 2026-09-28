@@ -3,13 +3,16 @@
 Record of the real session, 2026-09-28. The runbook (`CLOUDRUN-RUNBOOK.md`) is the *plan*;
 this is the *log*, including the two things that went wrong and how they were fixed.
 
-**Result:** the agent runs on Google Cloud Run at `https://ai-assistant-mh4bkv2beq-lm.a.run.app`,
-deployed by GitHub Actions with no service-account key anywhere, and reachable only by
-authenticated callers.
+**Result:** the agent runs on Google Cloud Run, deployed by GitHub Actions with no
+service-account key anywhere, and reachable only by authenticated callers.
+
+> Project number and service URL are redacted as `<PROJECT_NUMBER>` / `<SERVICE_URL>`.
+> Find your own with `gcloud projects describe PROJECT_ID --format='value(projectNumber)'`
+> and `gcloud run services describe SERVICE --region REGION --format='value(status.url)'`.
 
 | | |
 |---|---|
-| Project | `ai-assistant-vlad` (number `394969008192`) |
+| Project | `ai-assistant-vlad` (number `<PROJECT_NUMBER>`) |
 | Region | `europe-central2` (Warsaw — nearest GCP region to the Kyiv VPS) |
 | Service | `ai-assistant`, revision `ai-assistant-00002-f2z` |
 | Repo | `github.com/vladislavtaran/ai-assistant-math-agent` |
@@ -217,13 +220,13 @@ against the pool. This restricts it to repos owned by `vladislavtaran`.
 gcloud iam service-accounts add-iam-policy-binding \
   github-deployer@ai-assistant-vlad.iam.gserviceaccount.com \
   --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/394969008192/locations/global/workloadIdentityPools/github/attribute.repository/vladislavtaran/ai-assistant-math-agent"
+  --member="principalSet://iam.googleapis.com/projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/attribute.repository/vladislavtaran/ai-assistant-math-agent"
 ```
 
 Two layers: the provider condition limits credentials to the *account*, this binding limits them to
 one *repository*.
 
-> **Uses the project NUMBER (`394969008192`), not the ID.** Every other command uses the ID. Getting
+> **Uses the project NUMBER (`<PROJECT_NUMBER>`), not the ID.** Every other command uses the ID. Getting
 > this wrong produces `unable to acquire impersonated credentials` on the first run, which looks like
 > an auth bug rather than a typo.
 
@@ -245,7 +248,7 @@ unset GH_REPO GH_OWNER
 cd /Users/vlad/new1/ai-assistant-math-agent
 gh variable set GCP_PROJECT_ID  --body "ai-assistant-vlad"
 gh variable set GCP_DEPLOY_SA   --body "github-deployer@ai-assistant-vlad.iam.gserviceaccount.com"
-gh variable set GCP_WIF_PROVIDER --body "projects/394969008192/locations/global/workloadIdentityPools/github/providers/github-provider"
+gh variable set GCP_WIF_PROVIDER --body "projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider"
 gh variable list
 ```
 
@@ -330,7 +333,7 @@ gcloud run services describe ai-assistant --region europe-central2 --format='val
 ```
 
 ```bash
-curl -fsS https://ai-assistant-mh4bkv2beq-lm.a.run.app/api/health
+curl -fsS https://<SERVICE_URL>/api/health
 ```
 
 ```json
@@ -364,13 +367,13 @@ Enforcement propagated after roughly 45 seconds — the endpoint returned 200 fo
 the IAM change, so **verify rather than assume**:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://ai-assistant-mh4bkv2beq-lm.a.run.app/api/health
+curl -s -o /dev/null -w "%{http_code}\n" https://<SERVICE_URL>/api/health
 # 403
 ```
 
 ```bash
 curl -fsS -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  https://ai-assistant-mh4bkv2beq-lm.a.run.app/api/health
+  https://<SERVICE_URL>/api/health
 # 200, healthy
 ```
 
