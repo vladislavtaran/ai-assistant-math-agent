@@ -1,0 +1,15 @@
+.git
+.github
+.gitignore
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+*.log
+web/
+mcp-server/
+nginx.conf.example
+README.md
+LICENSE
