@@ -255,6 +255,9 @@ gh run watch
 - `iam.serviceAccounts.actAs` denied → the binding in 4b is missing
 - `Unable to acquire impersonated credentials` → `PROJECT_NUMBER` vs `PROJECT_ID` mixed up in the WIF provider string
 - `403 on artifactregistry` → wrong region in the image path
+- `Bad syntax for dict arg` on `--set-env-vars` → the VALUE contains commas, which gcloud reads as
+  pair separators. Prefix with an alternate delimiter: `--set-env-vars "^:^KEY=a,b,c"`. This bit
+  GEMINI_MODELS on the first real run, 2026-09-28.
 
 ---
 
