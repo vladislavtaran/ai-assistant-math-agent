@@ -56,7 +56,7 @@ jobs:
             --memory 512Mi \
             --timeout 120 \
             --set-secrets GEMINI_API_KEY=gemini-api-key:latest \
-            --set-env-vars "^:^GEMINI_MODELS=gemini-2.5-flash-lite,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.6-flash"
+            --set-env-vars "^:^GEMINI_MODELS=gemini-2.5-flash-lite,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.6-flash:MATH_PY=/usr/local/bin/python:MATH_AGENT=/app/server/mathagent.py"
 
       - name: Smoke test
         run: |
