@@ -1,0 +1,50 @@
+{
+  "_comment": "Eval cases. model_responses are the LLM's raw replies, replayed in order - no network, no quota. Add new cases by copying a block and changing the fields.",
+  "cases": [
+    {
+      "id": "conv-001",
+      "note": "conversational: must answer directly, spend no tools, cost 1 model call",
+      "prompt": "hi",
+      "model_responses": [
+        "{\"thought\":\"greeting\",\"answer\":\"Hello! How can I help?\"}"
+      ],
+      "expect_tools": [],
+      "expect_max_calls": 1,
+      "answer_contains": [
+        "Hello"
+      ]
+    },
+    {
+      "id": "math-001",
+      "note": "math must go to the deterministic solver, not the model's arithmetic",
+      "prompt": "what is 12*34+5",
+      "model_responses": [
+        "{\"tool\":\"math_solver\",\"args\":{\"operation\":\"evaluate\",\"expression\":\"12*34+5\"},\"final\":true}"
+      ],
+      "expect_tools": [
+        "math_solver"
+      ],
+      "expect_max_calls": 1,
+      "answer_contains": [
+        "413"
+      ]
+    },
+    {
+      "id": "rag-001",
+      "note": "portfolio answers must be grounded: tool + citations, never a one-call guess",
+      "prompt": "chromeos?",
+      "model_responses": [
+        "{\"tool\":\"portfolio_search\",\"args\":{\"query\":\"chromeos\"},\"final\":true}",
+        "{\"answer\":\"Vladyslav works on ChromeOS.\"}"
+      ],
+      "expect_tools": [
+        "portfolio_search"
+      ],
+      "expect_max_calls": 2,
+      "answer_contains": [
+        "ChromeOS"
+      ],
+      "require_citations": true
+    }
+  ]
+}

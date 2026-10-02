@@ -1,0 +1,52 @@
+name: Agent evals
+
+# Gates every push that touches the agent. Replays recorded model responses
+# through the agent loop - no API key, no network, no quota - and fails the
+# build if tool selection, the model-call budget or citation grounding regress.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/evals.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+  workflow_dispatch:
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the math agent's own dependency (SymPy)
+        run: |
+          python -m venv .venv-test
+          ./.venv-test/bin/pip install --quiet -r server/requirements.txt
+
+      - name: Offline self-test (tools + loop with a scripted LLM)
+        working-directory: server
+        env:
+          MATH_PY: ../.venv-test/bin/python
+          MATH_AGENT: ./mathagent.py
+        run: python3 selftest.py
+
+      - name: RAG plumbing self-test
+        working-directory: server
+        env:
+          PYTHONHASHSEED: '0'
+        run: python3 rag/selftest_rag.py
+
+      - name: Agent evals
+        working-directory: server
+        env:
+          MATH_PY: ../.venv-test/bin/python
+          MATH_AGENT: ./mathagent.py
+          PYTHONHASHSEED: '0'
+        run: python3 evals/run_evals.py
