@@ -8,6 +8,10 @@ ships with a **visible reasoning trace**.
 
 **Live demo:** https://chrome.net.ua/chat/
 
+**Runs in two places:** a self-hosted Linux VPS (nginx, TLS, hardened systemd units) and
+Google **Cloud Run**, deployed by GitHub Actions with **no service-account key anywhere**.
+See [Deployment](#deployment).
+
 ## What it can do
 
 | Tool | What it does | Why a tool (not the LLM) |
@@ -106,6 +110,72 @@ server/
 mcp-server/          MCP server exposing the deterministic tools (see its README)
 nginx.conf.example   reverse-proxy snippet
 ```
+
+## Deployment
+
+The agent runs in two environments from the same source tree.
+
+**1. Self-hosted VPS** — nginx terminating TLS and reverse-proxying `/chat/api/`, the backend
+under systemd as a dedicated service account with `NoNewPrivileges`, `ProtectSystem=strict`,
+`ProtectHome` and `PrivateTmp`. Secrets live outside the repo. Deployed over SSH by GitHub
+Actions with a concurrency guard, a post-deploy health check, and a commit-hash verification
+step that fails the build if the live version does not match. This is what serves
+[chrome.net.ua/chat/](https://chrome.net.ua/chat/).
+
+**2. Google Cloud Run** — containerised, `europe-central2`, deployed by
+[`.github/workflows/deploy-cloudrun.yml`](.github/workflows/deploy-cloudrun.yml) on every push
+to `main`:
+
+- **Keyless CI** via Workload Identity Federation. GitHub presents a short-lived OIDC token,
+  Google exchanges it for short-lived credentials. No service-account JSON key is created,
+  stored or rotated, because none exists. The provider carries an attribute condition
+  restricting it to this repository owner, and a second binding narrows it to this repo alone.
+- **Two least-privilege service accounts.** The runtime identity holds `secretAccessor` on a
+  single secret and nothing else — it cannot deploy. The CI identity can push images and deploy
+  but cannot read that secret.
+- **Secret Manager** for the model API key, mounted at runtime rather than baked into the image.
+- **Artifact Registry**, scale-to-zero (`min-instances 0`, `max-instances 3`), and a smoke test
+  that curls `/api/health` after every deploy.
+- **Not publicly invocable.** `allUsers` was removed after verification: an unauthenticated LLM
+  endpoint is an unbounded spend vector, and `--max-instances` caps compute but not token usage.
+
+[`CLOUDRUN-RUNBOOK.md`](CLOUDRUN-RUNBOOK.md) is the reproducible procedure.
+[`DEPLOYMENT-LOG.md`](DEPLOYMENT-LOG.md) is the record of the real run, including the three
+failures that only surfaced on execution — a `--set-env-vars` delimiter bug latent in the
+workflow for a month, hardcoded VPS paths that do not exist in a container, and a reserved
+`gh` CLI environment variable collision.
+
+## Evals
+
+The agent is gated by an eval suite, not just unit tests. `server/evals/cases.json` holds cases
+of the shape *prompt → recorded model responses → expectations*; `server/evals/run_evals.py`
+replays each one through the real agent loop and scores it on four things:
+
+- **tool selection** — did a maths question reach `math_solver`, did a portfolio question reach
+  `portfolio_search`, and did a conversational one use no tool at all
+- **model-call budget** — `run_agent` already returns `calls`; a case fails if it exceeds its
+  budget. On a free tier that caps daily requests, cost per answer *is* a correctness property
+- **answer content** — assertions on the final reply
+- **citation grounding** — portfolio answers must come back with sources attached
+
+**It runs on every push and costs nothing.** The loop takes its text-generation function as a
+parameter, so the suite injects a replayer over recorded responses: no API key, no network, no
+quota. Retrieval is exercised offline too — the project's deterministic lexical hashing
+embedding builds a throwaway index from `knowledge/*.md` in-process, so grounding is testable
+without embedding credits.
+
+The first run paid for itself twice. It caught that `portfolio_search` **silently** drops to an
+ungrounded answer when the index is missing — no error, no failure, just a reply with no
+citations — and that the `min_score` floor is tuned to semantic embeddings, so swapping the
+embedder empties the result set without raising anything.
+
+```bash
+cd server
+MATH_PY=../.venv-test/bin/python MATH_AGENT=./mathagent.py PYTHONHASHSEED=0 \
+  python3 evals/run_evals.py
+```
+
+See [`.github/workflows/evals.yml`](.github/workflows/evals.yml).
 
 ## Setup
 
